@@ -32,7 +32,7 @@
             </div>
 
             <!-- Quick info list - time posted + server version -->
-            {% include_cached quick-info-list.html %}
+            {% include_cached quick-info-list.html page=page %}
 
             {% if page.untranslated %}
             {% include_cached translation_in_progress.html site=site page=page %}
