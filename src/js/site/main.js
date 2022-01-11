@@ -7,8 +7,10 @@ hljs.initLineNumbersOnLoad({
   singleLine: true,
 });
 
-const showEvents = ['mouseover', 'hover', 'mouseenter', 'focus'];
-const hideEvents = ['mouseout', 'mouseleave', 'blur'];
+const SHOW_EVENTS = ['mouseover', 'hover', 'mouseenter', 'focus'];
+const HIDE_EVENTS = ['mouseout', 'mouseleave', 'blur'];
+const HEADER_TAGS =
+  'article h1, article h2, article h3, article h4, article h5, article h6';
 
 // compiles an object of parameters relevant for analytics event tracking.
 // takes an optional DOM element and uses additional information if present.
@@ -121,11 +123,11 @@ function renderVersionBlockPopover() {
       destroy();
     }
 
-    showEvents.forEach((event) => {
+    SHOW_EVENTS.forEach((event) => {
       badge.addEventListener(event, show);
     });
 
-    hideEvents.forEach((event) => {
+    HIDE_EVENTS.forEach((event) => {
       badge.addEventListener(event, hide);
     });
   });
@@ -259,8 +261,8 @@ $(document).ready(function () {
   var tooltip = document.querySelector('.tooltip-popover');
 
   // Give article headings direct links to anchors
-  $('article h1, article h2, article h3, article h4, article h5, article h6')
-    .not('.card')
+  $(HEADER_TAGS)
+    .not(`.card ${HEADER_TAGS}`)
     .filter('[id]')
     .each(function () {
       var isMainTitle = $(this).prop('nodeName') === 'H1';
@@ -356,11 +358,11 @@ $(document).ready(function () {
       document.querySelectorAll('.fa-link').forEach((icon) => {
         makePopper(icon);
 
-        showEvents.forEach((event) => {
+        SHOW_EVENTS.forEach((event) => {
           icon.parentElement.addEventListener(event, icon.show);
         });
 
-        hideEvents.forEach((event) => {
+        HIDE_EVENTS.forEach((event) => {
           icon.parentElement.addEventListener(event, icon.hide);
         });
 
@@ -371,8 +373,7 @@ $(document).ready(function () {
     }
   });
 
-  $('article h1, article h2, article h3, article h4, article h5, article h6')
-    .not('.card')
+  $(HEADER_TAGS)
     .filter('[id]')
     .hover(function () {
       $(this).find('i').toggle();
@@ -411,14 +412,14 @@ $(function () {
   const timeposted = document.getElementById('time-posted-on');
   let popperInstance = null;
 
-  showEvents.forEach((event) => {
+  SHOW_EVENTS.forEach((event) => {
     timeposted?.addEventListener(event, () => {
       tooltiptime.setAttribute('data-show', '');
       popperInstance = createPopper(timeposted, tooltiptime, {});
     });
   });
 
-  hideEvents.forEach((event) => {
+  HIDE_EVENTS.forEach((event) => {
     timeposted?.addEventListener(event, () => {
       tooltiptime.removeAttribute('data-show');
       if (popperInstance) {
