@@ -29,8 +29,7 @@ There are two different types of orbs you can use in your configuration, dependi
 {: #private-orbs }
 
 
-**Note:** _Private orbs are available on any of our paid [plans](https://circleci.com/pricing). Performance plan customers can create
-up to three private orbs, whereas our Scale plan customers can create an unlimited number of private orbs. Please reach out to your sales representative for more information._
+**Note:** _Private orbs are available on any of our [plans listed on our plans page](https://circleci.com/pricing)._
 {: class="alert alert-warning"}
 
 Using a private orb enables you to author an orb while ensuring the following:
@@ -191,3 +190,7 @@ jobs:
 - Refer to [Reusable Configuration Reference]({{site.baseurl}}/2.0/reusing-config/) for examples of reusable orbs, commands, parameters, and executors.
 - Refer to [Orb Testing Methodologies]({{site.baseurl}}/2.0/testing-orbs/) for information on how to test orbs you have created.
 - Refer to [Configuration Cookbook]({{site.baseurl}}/2.0/configuration-cookbook/) for information about how you can use CircleCI orb recipes in your configurations.
+
+## Learn More
+{: #learn-more }
+Take the [orbs course](https://academy.circleci.com/orbs-course?access_code=public-2021) with CircleCI academy to learn more.

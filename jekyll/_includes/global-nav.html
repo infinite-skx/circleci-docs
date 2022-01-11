@@ -10,7 +10,8 @@
           class="flex flex-row items-center global-nav--lockup-link"
           data-analytics-action="click-outer-cta"
         >
-          {% include utility-icons/circleci-wordmark.svg %}
+
+          <img width="125px" src="{{site.baseurl}}/assets/img/logos/logo-wordmark-black.svg" class="logo" alt="circleci"></img>
           <span class="global-nav--lockup-title">
             Docs
           </span>
@@ -32,7 +33,7 @@
       </div>
       <nav class="collapse global-nav--nav" id="global-nav">
         <div class="divider"></div>
-        {% include_cached mobile-sidebar.html site=site page=page %}
+        {% include_cached mobile-sidebar.html site=site page=page sidenav=include.sidenav %}
         <div class="global-nav--list global-nav--external-links">
           <a
             href="{{ '/' | outer_url }}"
@@ -41,7 +42,8 @@
             target="_blank"
             rel="noopener noreferrer"
           >
-            circleci.com&nbsp;&nbsp;{% include utility-icons/external.svg %}
+            <span>circleci.com</span>
+            <span class="external-icon">{% include utility-icons/external.svg size="24" %}</span>
           </a>
         </div>
         <div class="global-nav--footer">
@@ -54,10 +56,11 @@
             Sign Up
           </a>
           <a href="https://app.circleci.com/dashboard" class="btn-primary dashboard-link">
-            Go to app
+            Go to Application
           </a>
         </div>
       </nav>
     </div>
+
   </div>
 </div>

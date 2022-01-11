@@ -31,6 +31,10 @@ pipeline.git.tag            | The name of the git tag that was pushed to trigger
 pipeline.git.branch         | The name of the git branch that was pushed to trigger the pipeline.
 pipeline.git.revision       | The long (40-character) git SHA that is being built.
 pipeline.git.base_revision  | The long (40-character) git SHA of the build prior to the one being built.
+pipeline.in_setup           | True if the pipeline is in the setup phase, i.e. running a [setup workflow]({{ site.baseurl }}/2.0/dynamic-config/).
+pipeline.trigger_source     | The source that triggers the pipeline, current values are `webhook`, `api`, `scheduled_pipeline`
+pipeline.schedule.name      | The name of the schedule if it is a scheduled pipeline. Value will be empty string if the pipeline is triggerd by other sources
+pipeline.schedule.id        | The unique id of the schedule if it is a scheduled pipeline. Value will be empty string if the pipeline is triggerd by other sources
 {: class="table table-striped"}
 
 Note: While in most cases `pipeline.git.base_revision` will be the SHA of the pipeline that ran before your currently running pipeline, there are some caveats. When the build is the first build for a branch, the variable will not be present. In addition, if the build was triggered via the API, the variable will not be present.
@@ -188,7 +192,7 @@ Pipeline parameters which are defined in configuration are always in scope, with
 ## Conditional workflows
 {: #conditional-workflows }
 
-Use the `when` clause (or the inverse clause `unless`) under a workflow declaration, with a truthy or falsy value, to decide whether or not to run that workflow. Truthy/falsy values can be booleans, numbers, and strings. Falsy would be any of: false, 0, empty string, null, and NaN. Everything else would be truthy.
+Use the [`when` clause](https://circleci.com/docs/2.0/configuration-reference/#using-when-in-workflows) (or the inverse clause `unless`) under a workflow declaration, along with a [logic statement](https://circleci.com/docs/2.0/configuration-reference/#logic-statements), to decide whether or not to run that workflow. Logic statements in a `when` or `unless` clause should evaluate to a truthy or falsy value.
 
 The most common use of this construct is to use a pipeline parameter as the value, allowing an API trigger to pass that parameter to determine which workflows to run.
 

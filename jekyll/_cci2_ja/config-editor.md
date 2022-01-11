@@ -7,7 +7,7 @@ version:
   - Server v2.x
 ---
 
-[CircleCI CLI]({{ site.baseurl }}/2.0/local-cli/) やテキスト エディターを使わずに CircleCI 設定ファイルを変更できるよう、UI 要素として CircleCI 設定ファイル エディターが用意されています。 CircleCI 設定ファイル エディターは、CI/CD プロセスの変更方法の統一性を高め、開発しやすい環境を提供します。
+A UI environment, the CircleCI config editor, is provided for users who wish to modify their configurations without the use of the [CircleCI CLI]({{ site.baseurl }}/2.0/local-cli/) and/or a text editor. Using the CircleCI configuration editor eases the developer experience by giving users the ability to modify their CI/CD processes in a more unified fashion.
 
 ![設定ファイル エディター]({{ site.baseurl }}/assets/img/docs/config-editor-main.png)
 
@@ -38,7 +38,7 @@ CircleCI アプリの **[All Pipelines (すべてのパイプライン)]** ビ�
 ## 自動補完機能
 {: #auto-completion }
 
-一般的な多くの IDE と同じく、CircleCI 設定ファイル エディターでは、入力を自動で補完する機能が搭載されています。また、参考となるドキュメントも示されます。
+一般的な多くの IDE と同じく、CircleCI 設定ファイル エディターでは、入力を自動で補完する機能が搭載されています。 また、参考となるドキュメントも示されます。
 
 ![自動補完機能]({{ site.baseurl }}/assets/img/docs/config-editor-auto-complete.png)
 
@@ -58,14 +58,14 @@ CircleCI アプリの **[All Pipelines (すべてのパイプライン)]** ビ�
 
 ![設定ファイルが有効な場合]({{ site.baseurl }}/assets/img/docs/config-editor-validate-pass.png)
 
-設定ファイルに問題がある場合は赤色のバーが表示されるとともに、構文エラーがあればその場所が示されます。また、エラーの修正に役立つ参考ドキュメントがある場合は、下記スクリーンショットの中の [DOCS (ドキュメント)] タブにそれらのドキュメントが示されます。
+また、エラーの修正に役立つ参考ドキュメントがある場合は、下記スクリーンショットの中の [DOCS (ドキュメント)] タブにそれらのドキュメントが示されます。
 
 ![設定ファイルが無効な場合]({{ site.baseurl }}/assets/img/docs/config-editor-validate-fail.png)
 
 ## コミットおよび実行
 {: #commit-and-run }
 
-設定ファイルにエラーがなければ、設定ファイル エディター内で VCS へのコミットからパイプラインの再実行までを行うことができます。このためには、右上隅にある **[Commit and Run (コミットして実行)]** ボタンを選択します。
+設定ファイルにエラーがなければ、設定ファイル エディター内で VCS へのコミットからパイプラインの再実行までを行うことができます。 このためには、右上隅にある **[Commit and Run (コミットして実行)]** ボタンを選択します。
 
 ![コミットおよび実行]({{ site.baseurl }}/assets/img/docs/config-editor-commit-and-run.png)
 

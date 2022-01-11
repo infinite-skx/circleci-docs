@@ -3,191 +3,217 @@ layout: classic-docs
 title: macOS 上の iOS アプリケーションのテスト
 short-title: macOS 上の iOS アプリケーションのテスト
 categories:
-  - platforms
+  - プラットフォーム
 description: macOS 上の iOS アプリケーションのテスト
 order: 30
+version:
+  - Cloud
 ---
 
 以下のセクションに沿って、CircleCI を使用して iOS アプリケーションのテストをセットアップおよびカスタマイズする方法について説明します。
 
-- 目次
+* TOC
 {:toc}
 
-**メモ:** 「[iOS プロジェクトのチュートリアル]({{ site.baseurl}}/2.0/ios-tutorial/)」や「[macOS での Hello World]({{ site.baseurl }}/ja/2.0/hello-world-macos/)」も併せてご覧ください。
-
 ## 概要
+{: #overview }
 {:.no_toc}
 
-CircleCI では、iOS プロジェクトと macOS プロジェクトをビルドしてテストすることができます。 CircleCI の macOS ビルド イメージにインストールされているソフトウェアのマニフェストについては、macOS ビルド イメージの使用に関するドキュメントを参照してください。
+CircleCI では、 macOS 仮想マシンでの iOS プロジェクトのビルド、テスト、およびデプロイをサポートしています。 提供されている各イメージには、 Xcode と共に、 Ruby や OpenJDK などの共通のツールセットがインストールされています。 イメージの詳細については、各 Xcode イメージの[ソフトウェアマニフェスト](#supported-xcode-versions)を参照してください。
 
-## macOS ビルド コンテナ
+[iOS サンプルプロジェクト]({{ site.baseurl}}/ja/2.0/ios-tutorial/)と[ MacOS での入門]({{ site.baseurl }}/ja/2.0/hello-world-macos/)に関するドキュメントをご覧ください。
 
-各 `macos` ジョブは、macOS が稼働している新しいコンテナ内で実行されます。 CircleCI では、Apple から新しいバージョンの Xcode がリリースされるたびに、新しいコンテナをビルドします。 個々のビルド コンテナのコンテンツは変更されません (ただし、例外的にコンテナをリビルドせざるを得ない状況になることもあります)。 CircleCI では、安定したビルド環境を維持すること、そして `config.yml` ファイルに `xcode` キーを設定して最新のコンテナを選択していただけるようにすることを目標としています。
+## macOS Executor を使用する
+{: #using-the-macos-executor }
 
-新しい macOS コンテナに関する情報は、[CircleCI ディスカッション フォーラムの Annoucements (お知らせ) カテゴリ](https://discuss.circleci.com/c/announcements)で確認できます。
+各 `macos `ジョブは、特定のバージョンの macOS を実行する新しい仮想マシン上で実行されます。 できる限り迅速なデプロイを行うために、CircleCI では Apple から Xcode の新しい安定版またはベータ版がリリースされるたびに新しいイメージを作成しています。 通常、特定のビルドイメージの内容は変更されません。ただし例外的に、特定の理由によりコンテナを再ビルドせざるを得ない状況になることがあります。 CircleCI では、安定したビルド環境を維持すること、そして `config.yml` ファイルに `xcode` キーを設定し、最新のコンテナを選択できるようにすることを目標としています。
+
+ビルド環境が最新であることを確認するために、各イメージに含まれる macOS のバージョンを定期的に更新します。 macOS の新しいメジャー バージョンがリリースされると、Xcode の新しいメジャー バージョンが xx.2 リリースに達した時点で、ビルド環境を安定した状態に保てるよう新しいバージョンに切り替えます。
+
+新しい macOS コンテナに関する情報は、[Discuss フォーラムの Announcements (お知らせ) ](https://discuss.circleci.com/c/announcements)で確認できます。
+
+### ベータ版イメージのサポート
+{: #beta-image-support }
+
+Xcode の次回安定版リリースよりも前に開発者の方々がアプリケーションのテストを行えるよう、 できるだけ早期に macOS Executor で Xcode のベータ版を公開できるよう尽力します。
+
+ベータ イメージについては、安定版イメージ (更新が停止されたもの) と異なり、GM (安定版) イメージが公開され更新が停止するまでは、新規リリースのたびに既存のイメージが上書きされます。 現在ベータ版となっているバージョンの Xcode イメージを使用している場合、Apple が新しい Xcode ベータ版をリリースした際、最小限の通知によりそのイメージに変更が加えられることがあります。 これには、CircleCI では制御できない Xcode および関連ツールへの互換性を損なう変更が含まれる場合があります。
+
+ベータ版イメージに関する CircleCI のお客様サポート ポリシーについては、[サポート センターに関するこちらの記事](https://support.circleci.com/hc/en-us/articles/360046930351-What-is-CircleCI-s-Xcode-Beta-Image-Support-Policy-)をご覧ください。
+
+### Apple  シリコンのサポート
+{: #apple-silicon-support }
+
+Apple は、今回のリリースで Intel (`x86_64` ) と Apple シリコン(`arm64`)の両方のツールチェーンを提供しているため、 Xcode`12.0.0`以降を使用して Apple シリコンバイナリおよびユニバーサルバイナリをビルドすることが可能です。 Intel のホスト上で Apple シリコン バイナリをクロスコンパイルするとオーバーヘッドが増加し、コンパイル時間が Intel のネイティブコンパイル時間より長くなります。
+
+CircleCI ビルドホストは Intel ベースの Mac であるため、 Apple シリコン アプリケーションをネイティブで実行またはテストすることは現在不可能です。 アプリケーションをローカルでテストするには、バイナリを [アーティファクト](https://circleci.com/docs/ja/2.0/artifacts/) としてエクスポートする必要があります。 または、
+ CircleCI のランナーを使用して、 Apple シリコン上でネイティブにジョブを実行することもできます。</p> 
+
+
 
 ## サポートされている Xcode のバージョン
 
-現時点では以下の Xcode バージョンが使用可能です。
+{: #supported-xcode-versions }
 
-- `11.3.0`: Xcode 11.3 beta 1 (ビルド 11C24b)、macOS 10.15 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1657/index.html)
-- `11.2.1`: Xcode 11.2.1 (ビルド 11B500)、macOS 10.15 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1532/index.html)
-- `11.2.0`: Xcode 11.2.1 (!) (ビルド 11B500)、macOS 10.15 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1532/index.html)
-- `11.1.0`: Xcode 11.1 (ビルド 11A1027)、macOS 10.14 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1226/index.html)
-- `11.0.0`: Xcode 11.0 (ビルド 11A420a)、macOS 10.14 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1136/index.html)
-- `10.3.0`: Xcode 10.3 (ビルド 10G8)、macOS 10.14 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-903/index.html)
-- `10.2.1`: Xcode 10.2.1 (ビルド 10E1001)、macOS 10.14 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-594/index.html)
-- `10.1.0`: Xcode 10.1 (ビルド 10B61)、macOS 10.13 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-474/index.html)
-- `10.0.0`: Xcode 10.0 (ビルド 10A255)、macOS 10.13 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-456/index.html)
-- `9.4.1`: Xcode 9.4.1 (ビルド 9F2000)、macOS 10.13 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-430/index.html)
-- `9.3.1`: Xcode 9.3.1 (ビルド 9E501)、macOS 10.13 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-419/index.html)
-- `9.0.1`: Xcode 9.0.1 (ビルド 9A1004)、macOS 10.12[インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-282/index.html)
-- `8.3.3`: Xcode 8.3.3 (ビルド 8E3004b)、macOS 10.12 [インストールされているソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/build-146/index.html)
+ | 設定       | Xcode のバージョン               | macOS のバージョン | macOS UI テストのサポート | ソフトウェア マニフェスト                                                                                | リリースノート                                                                                       |
+ | -------- | -------------------------- | ------------ | ----------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+ | `13.1.0` | Xcode 13.1 (13A1030d)      | 11.6.1       | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v6269/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-13-1-rc-released/41577)                        |
+ | `13.0.0` | Xcode 13.0 (13A233)        | 11.5.2       | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v6052/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-13-rc-released/41256)                          |
+ | `12.5.1` | Xcode 12.5.1 (12E507)      | 11.4.0       | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v5775/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-12-5-1-released/40490)                         |
+ | `12.4.0` | Xcode 12.4 (12D4e)         | 10.15.5      | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v4519/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-12-4-release/38993)                            |
+ | `12.3.0` | Xcode 12.3 (12C33)         | 10.15.5      | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v4250/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-12-3-release/38570)                            |
+ | `12.2.0` | Xcode 12.2 (12B45b)        | 10.15.5      | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v4136/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-12-2-released/38156)                           |
+ | `12.1.1` | Xcode 12.1.1 RC (12A7605b) | 10.15.5      | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v4054/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-12-1-1-rc-released/38023)                      |
+ | `12.0.1` | Xcode 12.0.1 (12A7300)     | 10.15.5      | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v3933/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-12-0-1-released-xcode-12-0-0-deprecated/37630) |
+ | `11.7.0` | Xcode 11.7 (11E801a)       | 10.15.5      | ○                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v3587/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-7-released/37312)                           |
+ | `11.6.0` | Xcode 11.6 (11E708)        | 10.15.5      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v3299/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-6-released/36777/2)                         |
+ | `11.5.0` | Xcode 11.5 (11E608c)       | 10.15.4      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v2960/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-5-gm-released/36029/4)                      |
+ | `11.4.1` | Xcode 11.4.1 (11E503a)     | 10.15.4      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v2750/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-4-1-released/35559/2)                       |
+ | `11.3.1` | Xcode 11.3.1 (11C505)      | 10.15.1      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v2244/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-3-1-released/34137/6)                       |
+ | `11.2.1` | Xcode 11.2.1 (11B500)      | 10.15.0      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v2118/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-2-1-gm-seed-1-released/33345/14)            |
+ | `11.1.0` | Xcode 11.1 (11A1027)       | 10.14.4      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1989/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-1-image-released/32668/19)                  |
+ | `11.0.0` | Xcode 11.0 (11A420a)       | 10.14.4      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1969/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-11-gm-seed-2-released/32505/29)                |
+ | `10.3.0` | Xcode 10.3 (10G8)          | 10.14.4      | ×                 | [インストール済みソフトウェア](https://circle-macos-docs.s3.amazonaws.com/image-manifest/v1925/index.html) | [リリースノート](https://discuss.circleci.com/t/xcode-10-3-image-released/31561)                     |
 
-## はじめに
+ 
+ {: class="table table-striped"}
+ 
+ 
 
-CircleCI アプリケーションの [Add Projects (プロジェクトの追加)] ページで、ビルドしたい macOS プロジェクトを選択します。 **メモ:** 2.0 では、ビルド環境を変更する必要がなくなりました。プロジェクトが macOS としてリストされていない場合は、Linux プロジェクトを選択し、[Operating System (オペレーティング システム)] セクションで「macOS」を選択してください。
+## はじめよう
 
-## 基本的なセットアップ
+{: #getting-started }
 
-プロジェクトで macOS ビルドを有効にしたら、CircleCI が正しいビルド アクションを実行できるように、CircleCI でビルドするスキームを共有します。 既存のスキームを共有するには、Xcode で以下の手順を行います。
+CircleCI アプリケーションの** [Add Projects (プロジェクトの追加)] **ページで、ビルドしたい macOS プロジェクトのレポジトリを選択します。 macOS ビルドが可能なプランであることを確認する必要があります。またはプロジェクトがオープンソースの場合は、毎月無料ビルドクレジットがつく[ 特別プラン](https://circleci.com/open-source/)を申し込むことができます。 </p> 
 
-1. [Product (プロダクト)] > [Scheme (スキーム)] > [Manage Schemes (スキーム管理)] の順に選択します。
+CircleCI でのアプリケーションのビルドと署名には [fastlane](https://fastlane.tools) を使用することを強くお勧めします。 fastlaneを使うと、多くの場合が最小限の設定で簡単にビルド、テスト、デプロイプロセスを実行することができます。
+
+
+
+### Xcode プロジェクトの設定
+
+{: #setting-up-your-xcode-project }
+
+CircleCI でプロジェクトを設定した後、 fastlane でビルドするスキームが Xcode プロジェクトで「共有」としてマークされていることを確認する必要があります。 Xcode で作成されるほとんどの新規プロジェクトでは、デフォルトのスキームはすでに「共有」としてマークされています。 これを確認する、または既存のスキームを共有するには、次の手順を実行します。
+
+1. Xcode で、[Product (プロダクト)]> [Scheme (スキーム)] > [Manage Schemes (スキーム管理)] の順に選択します。
 2. 共有したいスキームの [Shared (共有する)] オプションを選択し、[Close (閉じる)] をクリックします。
-3. [Source Control (ソース管理)] > [Commit (コミットする)] の順に選択します。
-4. 共有データ フォルダーを選択します。
-5. テキスト フィールドにコミット メッセージを入力します。
-6. プロジェクトを Git で管理している場合は、[Push to remote (リモートにプッシュする)] オプションを選択します。
-7. [Commit Files (ファイルをコミットする)] ボタンをクリックします。 新しい `.xcscheme` ファイルが Xcode プロジェクトの下の `xcshareddata/xcschemes` フォルダーに格納されます。
-8. CircleCI からアクセスできるように、このファイルを Git リポジトリにコミットします。
+3. `myproject.xcodeproj/xcshareddata/xcschemes` ディレクトリが Git リポジトリに組み込まれていることを確認し、変更をプッシュします
 
-単純なプロジェクトであれば、最小限の構成で実行できます。 最小限の設定ファイルの例は、「[iOS プロジェクトのチュートリアル]({{ site.baseurl }}/ja/2.0/ios-tutorial/)」にて参照してください。
+単純なプロジェクトであれば、最小限の設定で実行できます。 最小限の設定ファイルの例は、「[iOS プロジェクトのチュートリアル]({{ site.baseurl }}/ja/2.0/ios-tutorial/)」を参照してください。
 
-### ベスト プラクティス
-{:.no_toc}
 
-基本的なセットアップ手順に加えて、Specs リポジトリ全体をクローンするのではなく、CDN を利用できる CocoaPods 1.8 以降を使用することをお勧めします。 ポッドをすばやくインストールできるようになり、ビルド時間が短縮されます。 1.8 以降では `pod install` ステップのジョブ実行がかなり高速化されるので、1.7 以前を使用している場合はアップグレードを検討してください。
-
-CocoaPods を使用するには、プロファイルの先頭行を次のように記述します。
-
-    source 'https://cdn.cocoapods.org/'
-    
-
-1.7 以前からアップグレードする場合はさらに、プロファイルから次の行を削除すると共に、CircleCI 設定ファイルの "Fetch CocoaPods Specs" ステップを削除します。
-
-    source 'https://github.com/CocoaPods/Specs.git'
-    
-
-## 高度なセットアップ
-
-高度なセットアップとして、ビルド ジョブやテスト ジョブと共に Lint ジョブを実行できます。また、[Danger](https://github.com/danger/danger) などのツールも実行できる場合があります。
-
-以下のように推奨の構成を拡張して、Lint ジョブと Danger ジョブを追加することができます。
-
-```yaml
-version: 2
-jobs:
-  build-and-test:
-  swiftlint:
-    docker:
-      - image: dantoml/swiftlint:latest
-    steps:
-      - checkout
-      - run: swiftlint lint --reporter junit | tee result.xml
-      - store_artifacts:
-          path: result.xml
-      - store_test_results:
-          path: result.xml
-  danger:
-    docker:
-      - image: dantoml/danger:latest
-    steps:
-      - checkout
-      - run: danger
-
-workflows:
-  version: 2
-  build-test-lint:
-    jobs:
-
-      - swiftlint
-      - danger
-      - build-and-test
-```
 
 ## fastlane の使用
 
-[fastlane](https://fastlane.tools/) は、モバイル アプリのビルドとデプロイのプロセスを自動化するためのツールセットです。 fastlane は、使用するとローカルでも CircleCI 上でもビルドとデプロイを同等に実行でき、セットアップ プロセスが簡単になるので、ご使用をお勧めします。
+{: #using-fastlane }
+
+[fastlane](https://fastlane.tools/) は、モバイルアプリのビルドとデプロイのプロセスを自動化するためのツールセットです。 CicleCI上で fastlane を使用すると、ビルド、テスト、デプロイプロセスの設定や自動化が簡単に行えるため、ぜひご使用ください。 また、fastlane の使用によりビルドをローカルでも CircleCI 上でも同等に実行することができます。
+
+
 
 ### Gemfile の追加
+
+{: #adding-a-gemfile }
+
+
+
 {:.no_toc}
 
-ローカルでも CircleCI 上でも同じバージョンの fastlane を使用できるよう、`Gemfile` をリポジトリに追加することをお勧めします。 以下は、最小限の構成の `Gemfile` の例です。
+ローカルでも依存関係がすべてインストールされた CircleCI 上でも同じバージョンの fastlane が使用できるよう、`Gemfile` をリポジトリに追加することをお勧めします。 以下に `Gemfile` の簡単な例を示します。
 
-    # Gemfile
-    source "https://rubygems.org"
-    gem 'fastlane'
-    
+
+
+```ruby
+# Gemfile
+source "https://rubygems.org"
+gem 'fastlane'
+```
+
 
 `Gemfile` をローカルで作成したら、`bundle install` を実行し、`Gemfile` と `Gemfile.lock` の両方をリポジトリにチェックインする必要があります。
 
+
+
 ### CircleCI 上で使用する場合の fastlane のセットアップ
+
+{: #setting-up-fastlane-for-use-on-circleci }
+
+
+
 {:.no_toc}
 
-fastlane を CircleCI プロジェクトで使用する場合は、以下の行を `fastfile` に追加することをお勧めします。
+fastlane を CircleCI プロジェクトで使用する場合は、以下の行を `Fastfile` の始めに追加することをお勧めします。
 
-    # fastlane/Fastfile
-    
-    ...
-    platform :ios do
-      before_all do
-        setup_circle_ci
-      end
-      ...
-    end
-    
 
-以下のアクションを実行するには、`setup_circle_ci` fastlane アクションを `before_all` ブロック内に記述する必要があります。
 
-- fastlane match で使用する一時的なキーチェーンを新規作成する (詳細については、コード署名のセクションを参照してください)。
-- fastlane match を `readonly` モードに切り替えて、CI が新しいコード署名証明書やプロビジョニング プロファイルを作成しないようにする。
-- ログやテスト結果のパスをセットアップして、それらを収集しやすくする。
+```ruby
+# fastlane/Fastfile
+platform :ios do
+  before_all do
+    setup_circle_ci
+  end
+  ...
+end
+```
 
-### CircleCI で fastlane を使用する場合の構成例
+
+以下のアクションを実行するには、`setup_circle_ci` fastlane アクションを `before_all` ブロック内に置く必要があります。
+
+* fastlane match で使用する一時的なキーチェーンを新規作成する (詳細については、コード署名のセクションを参照してください)。
+
+* fastlane match を `ランダム` モードに切り替えて、CI が新しいコード署名証明書やプロビジョニング プロファイルを作成しないようにする。
+
+* ログやテスト結果のパスをセットアップして、それらを収集しやすくする。
+
+
+
+### CircleCI で fastlane を使用する場合の設定例
+
+{: #example-configuration-for-using-fastlane-on-circleci }
+
+
+
 {:.no_toc}
 
-以下に、CircleCI で使用できる fastlane の基本構成を示します。
+以下に、CircleCI で使用できる fastlane の基本設定を示します。
 
-    # fastlane/Fastfile
-    default_platform :ios
-    
-    platform :ios do
-      before_all do
-        setup_circle_ci
-      end
-    
-      desc "すべてのテストを実行"
-      lane :test do
-        scan
-      end
-    
-      desc "アドホック ビルド"
-      lane :adhoc do
-        match(type: "adhoc")
-        gym(export_method: "ad-hoc")
-      end
-    end
-    
 
-上記の構成は、以下の CircleCI の設定ファイルと組み合わせて使用できます。
+
+```ruby
+# fastlane/Fastfile
+default_platform :ios
+
+platform :ios do
+  before_all do
+    setup_circle_ci
+  end
+
+  desc "Runs all the tests"
+  lane :test do
+    scan
+  end
+
+  desc "Ad-hoc build"
+  lane :adhoc do
+    match(type: "adhoc")
+    gym(export_method: "ad-hoc")
+  end
+end
+```
+
+
+上記の設定は、以下の CircleCI の設定ファイルと組み合わせて使用できます。
+
+
 
 ```yaml
 # .circleci/config.yml
-version: 2
+version: 2.1
 jobs:
   build-and-test:
     macos:
-      xcode: "10.2.0"
+      xcode: 11.3.0
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
@@ -204,12 +230,11 @@ jobs:
 
   adhoc:
     macos:
-      xcode: "10.2.0"
+      xcode: 11.3.0
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
     steps:
-
       - checkout
       - run: bundle install
       - run:
@@ -219,10 +244,8 @@ jobs:
           path: output
 
 workflows:
-  version: 2
   build-test-adhoc:
     jobs:
-
       - build-and-test
       - adhoc:
           filters:
@@ -232,275 +255,568 @@ workflows:
             - build-and-test
 ```
 
-環境変数 `FL_OUTPUT_DIR` は、fastlane ログが保存されるアーティファクト ディレクトリです。 この環境変数を使用して、Gym や Scan などのログを自動的に保存するためのパスを `store_artifacts` ステップで設定します。
 
-### テスト時間の短縮
+環境変数 `FL_OUTPUT_DIR` は、fastlane ログと署名済み `.ipa` ファイルを保存するアーティファクトディレクトリです。 この環境変数を使用して、自動的にログを保存し、fastlane からアーティファクトをビルドするためのパスを `store_artifacts` ステップで設定します。
 
-デフォルトで、fastlane scan はテスト出力レポートを `html` 形式や `junit` 形式で生成します。 テストに時間がかかり、これらの形式のレポートが必要でない場合は、[fastlane のドキュメント](https://docs.fastlane.tools/actions/run_tests/#parameters)で説明されているように、パラメーター `output_types` を変更して、これらの形式を無効化することを検討してください。
 
-### CocoaPods の使用
-{:.no_toc}
 
-CocoaPods を使用する場合は、[Pods ディレクトリをソース管理に](http://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control)チェックインすることをお勧めします。 そうすることで、決定論的で再現可能なビルドを実現できます。
+### fastlane match によるコード署名
 
-## サポートされているビルドおよびテストのツール
+{: #code-signing-with-fastlane-match }
 
-CircleCI 2.0 では、iOS のビルドやテストに関するほぼすべての戦略に合わせてビルドをカスタマイズできます。
+ローカルでも CircleCI 環境下でもコード署名のプロセスを簡易化し自動化することができるため、iOS アプリケーションの署名には fastlane match のご使用をお勧めします。
 
-### XCTest ベースのツール
-{:.no_toc}
+fastlane match の使用に関する詳細は、[ iOS コード署名に関するドキュメント]({{ site.baseurl}}/ja/2.0/ios-codesigning/) をご覧ください
 
-以下のテスト ツールは、CircleCI で有効に機能することが確認されています (他の多くのツールも問題なく機能します)。
 
-- [XCTest](https://developer.apple.com/library/ios/documentation/DeveloperTools/Conceptual/testing_with_xcode/chapters/01-introduction.html)
-- [Kiwi](https://github.com/kiwi-bdd/Kiwi)
-- [KIF](https://github.com/kif-framework/KIF)
 
-### その他のツール
-{:.no_toc}
+## Ruby の使用
 
-[Appium](http://appium.io/) や [Frank](http://www.testingwithfrank.com/) などの一般的な iOS テスト ツールも正常に機能します。これらのツールはインストール済みで、`run` コマンドで呼び出すことができます。
+{: #using-ruby }
 
-### シミュレーターの事前起動
-{:.no_toc}
+CircleCI の macOS イメージには、複数のバージョンの Ruby が格納されています。 すべてのイメージにおいて、Ruby がデフォルトで使用されています。 また、イメージがビルドされた時点において最新バージョンの動作が安定している Ruby も含まれています。 CircleCI では、[Ruby-Lang.org のダウンロードページ](https://www.ruby-lang.org/ja/downloads/)を基に、動作が安定している Ruby のバージョンを判断しています。 各イメージにインストールされている Ruby のバージョンは、[各コンテナのソフトウェア マニフェスト](#supported-xcode-versions)に記載されています。
 
-アプリケーションをビルドする前に iOS シミュレーターをあらかじめ起動して、シミュレーターの稼働が遅れないようにします。 こうすることで、ビルド中にシミュレーターのタイムアウトが発生する回数を全般的に減らすことができます。
+マニフェストで「available to chruby (chruby で使用可)」と記載されている Ruby のバージョンでは、[`chruby`](https://github.com/postmodern/chruby) を使用してステップを実行できます。
 
-シミュレーターを事前に起動するには、以下の行を `config.yml` ファイルに追加します。ここでは、iOS 10.2 を使用する iPhone 7 シミュレーターでテストを行うように指定しています。
+**注:** システムディレクトリに適用されるアクセス許可が制限されるため、システムのRuby を使って Gems をインストールすることは推奨しません。 通常、すべてのジョブに対して Chrudy が提供する代替の Ruby の使用を推奨しています。
 
-        steps:
-          - run:
-              name: シミュレーターの事前起動
-              command: xcrun instruments -w "iPhone 7 (10.2) [" || true
-    
 
-**メモ:** iPhone と Apple Watch のシミュレーターもビルド イメージに含まれるので、iPhone 7 シミュレーターを一意に識別するために `[` が必要です。
 
-- iPhone シミュレーター: `iPhone 7 (10.2) [<uuid>]`
-- iPhone と Apple Watch のペア: `iPhone 7 Plus (10.2) + Apple Watch Series 2 - 42mm (3.1) [<uuid>]`
+### Ruby から macOS Orb への切り替え (推奨) 
 
-### `config.yml` ファイルの作成
-{:.no_toc}
+{: #switching-rubies-with-the-macos-orb-recommended }
 
-ビルドを柔軟にカスタマイズするには、`.circleci/config.yml` ファイルをプロジェクトに追加します。こうすることで、ビルド プロセスのさまざまな段階で任意の bash コマンドを実行できます。 `config.yml` ファイルの構造の詳細については、「[CircleCI を設定する]({{ site.baseurl }}/ja/2.0/configuration-reference/)」を参照してください。 **メモ:** このドキュメントに記載されているオプションの多くは、macOS ビルドでは機能しません。
+公式の macOS Orb (バージョン `2.0.0` 以降)  を使用すると、ジョブ内で Ruby から簡単に切り替えることができます。 どの Xcode イメージを使用していても、適切な切り替えコマンドが自動的に使用されます。
 
-### カスタム パッケージのインストール
-{:.no_toc}
+まずは、Orb を設定の一番最初に含めます。
 
-CircleCI には [Homebrew](https://brew.sh/index_ja) がプリインストールされているため、`brew install` を使用するだけで、ビルド VM に必要なほぼすべての依存関係を追加できます。 以下に例を示します。
 
-        steps:
-          - run:
-              name: cowsay のインストール
-              command: brew install cowsay
-          - run:
-              name: cowsay hi
-              command: cowsay Hi!
-    
-
-必要な場合は、`sudo` コマンドを使用して、Homebrew 以外のカスタマイズも実行できます。
-
-### 特定の Ruby バージョンの使用
-{:.no_toc}
-
-CircleCI の macOS コンテナには、複数のバージョンの Ruby が格納されています。 デフォルトのバージョンは、システムにインストールされている Ruby です。 コンテナには、そのコンテナがビルドされた時点で最新バージョンの、動作が安定している Ruby も含まれています。 CircleCI では、[Ruby-Lang.org のダウンロード ページ](https://www.ruby-lang.org/ja/downloads/)を基に、動作が安定している Ruby のバージョンを判断しています。 各イメージにインストールされている Ruby のバージョンは、[各コンテナのソフトウェア マニフェスト](#サポートされている-xcode-のバージョン)に記載されています。
-
-マニフェストで「available to chruby (chruby で使用可)」と説明されている Ruby のバージョンでは、[`chruby`](https://github.com/postmodern/chruby) を使用してステップを実行できます。
-
-#### macOS 10.15 (Catalina)/Xcode 11.2 以降を使用したイメージ
-
-[`chruby`](https://github.com/postmodern/chruby) は Ruby のバージョンを指定できるプログラムで、イメージにインストールされています。 自動切り替え機能はデフォルトでは有効になっていません。 使用する Ruby のバージョンを指定するには、次のように `~/.bash_profile` の `chruby` 関数を呼び出します。
 
 ```yaml
-run:
-  name: Ruby バージョンの設定
-  command: echo 'chruby ruby-2.6' >> ~/.bash_profile  # 2.6 を特定の Ruby バージョンに置き換えます
+# ...
+orbs:
+  macos: circleci/macos@2
 ```
 
-あるいは、[こちらの手順](https://github.com/postmodern/chruby#auto-switching)に従って、[自動切り替え機能を有効化](https://github.com/postmodern/chruby#auto-switching)することも可能です。
 
-#### macOS 10.14 (Mojave)/Xcode 11.1 以前を使用したイメージ
+次に、必要なバージョン番号と共に `switch-ruby` コマンドを定義します。 たとえば、Ruby 2.6 に切り替える場合は、
 
-macOS 10.14 以前 (Xcode 11.1 以前) を使用したビルド イメージには、デフォルトで `chruby` と[自動切り替え機能](https://github.com/postmodern/chruby#auto-switching)が有効になっています。
 
-使用する Ruby のバージョンを指定するには、2 つの方法があります。 1 つは、[`chruby` で説明されているとおり、`.ruby-version` という名前のファイルを作成してリポジトリにコミットする方法](https://github.com/postmodern/chruby#auto-switching)です。 `.ruby-version` ファイルをソース管理にコミットしたくない場合は、ジョブ ステップでファイルを作成できます。
 
 ```yaml
-run:
-  name: Ruby バージョンの設定
-  command:  echo "ruby-2.4" > ~/.ruby-version # 2.4 を特定の Ruby バージョンに置き換えます
+steps:
+  # ...
+  - macos/switch-ruby:
+      version: "2.6"
 ```
 
-**メモ:** Ruby のバージョンは、[macOS コンテナのソフトウェア マニフェスト](#サポートされている-xcode-のバージョン)に記載されている中から選択する必要があります。
 
-プリインストールされていない Ruby のバージョンでジョブを実行するには、必要なバージョンの Ruby をインストールする必要があります。 必要なバージョンの Ruby をインストールするには、[ruby-install](https://github.com/postmodern/ruby-install) ツールを使用します。 インストールが完了したら、上記の方法で対象のバージョンを選択できるようになります。
+`2.6` をソフトウェアマニフェストファイルから必要なバージョンに変更してください。 `3.0.2` のように Ruby のフルバージョンを記載する必要はなく、 メジャーバージョンのみで問題ありません。 そうすることで、設定を壊すことなく Ruby の新しいパッチバージョンの新しいイメージに切り替えることができます。
+
+デフォルトの Ruby (macOS に Apple が搭載した Ruby) に戻すには、`version` を `system` として定義します。
+
+
+
+```yaml
+steps:
+  # ...
+  - macos/switch-ruby:
+      version: "system"
+```
+
+
+**注:** Xcode 11.7 以降のイメージでは、デフォルトで chruby を使用した Ruby 2.7 に設定されています。 Xcode 11.6 以前のイメージでは、デフォルトで Ruby に設定されています。
+
+
+
+### Xcode 11.7 以降を使用したイメージ
+
+{: #images-using-xcode-117-and-later }
+
+
+
+{:.no_toc}
+
+Ruby の別のバージョンに切り替えるには、ジョブの最初に以下を追加します。
+
+
+
+```yaml
+steps:
+  # ...
+  - run:
+      name: Ruby バージョンの設定
+      command: sed -i '' 's/^chruby.*/chruby ruby-3.0/g' ~/.bash_profile
+```
+
+
+`3.0` を必要な Ruby バージョンに変更します。`3.0.2` のように Ruby のフルバージョンを記載する必要はなく、 メジャーバージョンのみで問題ありません。 そうすることで、設定を壊すことなく Ruby の新しいパッチバージョンの新しいイメージに切り替えることができます。
+
+元の Ruby に戻すには、ジョブの最初に以下を追加します。
+
+
+
+```yaml
+steps:
+  # ...
+  - run:
+      name: Ruby バージョンの設定
+      command: sed -i '' 's/^chruby.*/chruby system/g' ~/.bash_profile
+
+```
+
+
+
+
+### Xcode 11.2 以降を使用したイメージ
+
+{: #images-using-xcode-112-and-later }
+
+
+
+{:.no_toc}
+
+使用する Ruby のバージョンを指定するには、次のように `~/.bash_profile` に`chruby` 機能を追加します。
+
+
+
+```yaml
+steps:
+  # ...
+  - run:
+      name: Ruby バージョンの設定
+      command: echo 'chruby ruby-2.6' >> ~/.bash_profile
+```
+
+
+`2.6` を必要な Ruby バージョンに変更します。`2.6.5` のように Ruby のフルバージョンを記載する必要はなく、 メジャーバージョンのみで問題ありません。 そうすることで、設定を壊すことなく Ruby の新しいバージョンの新しいイメージに切り替えることができます。
+
+
+
+### Xcode 11.1 以前を使用したイメージ
+
+{: #images-using-xcode-111-and-earlier }
+
+
+
+{:.no_toc}
+
+使用する Ruby のバージョンを指定するには、`chruby` に記載されているように [`.ruby-version`という名前のファイルを作成します。](https://github.com/postmodern/chruby#auto-switching) これは以下のようにジョブステップで実行できます。
+
+
+
+```yaml
+steps:
+  # ...
+  - run:
+      name: Ruby バージョンの設定
+      command:  echo "ruby-2.4" > ~/.ruby-version
+```
+
+
+`2.4` を必要な Ruby バージョンに変更します。`2.4.9` のように Ruby のフルバージョンを記載する必要はなく、 メジャーバージョンのみで問題ありません。 そうすることで、設定を壊すことなく Ruby の新しいバージョンの新しいイメージに切り替えることができます。
+
+
+
+### Ruby バージョンの追加インストール
+
+{: #installing-additional-ruby-versions }
+
+**注:** Ruby バージョンを追加インストールするにはかなりの時間を要します。 デフォルトでイメージにインストールされていな特定のバージョンを使用する必要がある場合のみ行うことを推奨します。
+
+プリインストールされていない Ruby のバージョンでジョブを実行するには、そのバージョンの Ruby をインストールする必要があります。 必要なバージョンの Ruby をインストールするには、[ruby-install](https://github.com/postmodern/ruby-install) ツールを使用します。 インストールが完了したら、上記の方法でバージョンを選択することができます。
+
+
 
 ### カスタム バージョンの CocoaPods と他の Ruby gem の使用
+
+{: #using-custom-versions-of-cocoapods-and-other-ruby-gems }
+
+
+
 {:.no_toc}
 
 ローカルで使用しているバージョンの CocoaPods を CircleCI のビルドでも使用するには、iOS プロジェクトで Gemfile を作成し、そこに CocoaPods バージョンを追加することをお勧めします。
 
-    source 'https://rubygems.org'
-    
-    gem 'cocoapods', '= 1.3.0'
-    
+
+
+```ruby
+source 'https://rubygems.org'
+
+gem 'cocoapods', '= 1.3.0'
+```
+
 
 次に、Bundler を使用してインストールします。
 
 {% raw %}
-steps:
-    
-          - restore_cache:
-              key: 1-gems-{{ checksum "Gemfile.lock" }}
 
-      - run: bundle check || bundle install --path vendor/bundle
-    
-          - save_cache:
-              key: 1-gems-{{ checksum "Gemfile.lock" }}
-          paths:
-                - vendor/bundle
+
+```yaml
+steps:
+  - restore_cache:
+      key: 1-gems-{{ checksum "Gemfile.lock" }}
+  - run: bundle check || bundle install --path vendor/bundle --clean
+  - save_cache:
+      key: 1-gems-{{ checksum "Gemfile.lock" }}
+      paths:
+        - vendor/bundle
+```
+
+
 {% endraw %}
 
 次に、コマンドの前に `bundle exec` を記述して、確実に使用できるようにします。
 
-        steps:
-          - run: bundle exec pod install
-    
-
-## デプロイの構成
-
-署名済みのアプリケーションを作成したら、デプロイを構成できます。 以下のいずれかを使用して、アプリケーションを簡単に配布できます。
-
-- [iTunes Connect](https://itunesconnect.apple.com/)
-- [HockeyApp](http://hockeyapp.net/)
-- [Crashlytics (ベータ版)](http://try.crashlytics.com/beta/)
-- [TestFairy](https://testfairy.com/)
-
-使用するサービスに応じて、環境変数をセットアップする必要があります。
-
-### HockeyApp
-{:.no_toc}
-
-1. HockeyApp にログインし、[トークン ページ](https://rink.hockeyapp.net/manage/auth_tokens)で新しい API トークンを作成します。 新しいビルドを HockeyApp にアップロードするには、使用するトークンに少なくともアップロード権限が必要です。
-
-2. 新しい API トークンに「CircleCI Distribution」などの CircleCI に関連する名前を付けます。
-
-3. トークンをコピーし、CircleCI にログインして、アプリケーションの [Project Settings (プロジェクト設定)] ページに移動します。
-
-4. `HOCKEY_APP_TOKEN` という名前の新しい環境変数を作成し、その値としてトークンを貼り付けます。 これで、どのジョブでもこのトークンにアクセスできます。
-
-### Crashlytics (ベータ版)
-{:.no_toc}
-
-1. Fabric.io にログインし、組織の設定ページにアクセスします。![Fabric.io のログイン]({{ site.baseurl }}/assets/img/docs/fabric-org-settings-page.png)
-
-2. 対象の組織 (上図では CircleCI) をクリックし、[API key (API キー)] と [Build Secret (ビルド シークレット)] の各リンクをクリックして、それらの項目を表示させます。![Fabric.io の組織設定]({{ site.baseurl }}/assets/img/docs/fabric-api-creds-page.png)
-
-3. CircleCI アプリケーションで、アプリケーションの [Project Settings (プロジェクト設定)] ページに移動し、[Environment Variables (環境変数)] に新しい項目として `CRASHLYTICS_API_KEY` と`CRASHLYTICS_SECRET` を追加し、それぞれ Crashlytics の Web サイトに表示された値を設定します。
-
-### TestFairy
-{:.no_toc}
-
-TestFairy でアプリケーションをセットアップするには、以下の手順を行います。
-
-![TestFairy の設定]({{ site.baseurl }}/assets/img/docs/testfairy-open-preferences.png)
-
-1. TestFairy ダッシュボードで、[Preferences (設定)] ページに移動します。
-2. [Preferences (設定)] ページの [API Key (API キー)] セクションに移動します。
-3. API キーをコピーし、CircleCI アプリケーションでアプリケーションの [Project Settings (プロジェクト設定)] ページに移動します。
-4. デプロイするには、[fastlane](https://docs.fastlane.tools/getting-started/ios/beta-deployment/) または `curl` を使用し、設定ファイルにジョブを追加します。以下の例を参照してください。
 
 
-{% raw %}
 ```yaml
-jobs:
-  build:
-    #  ビルド コードをここに挿入...
-  deploy:
-    steps:
-
-      - checkout
-      - run:
-          name: TestFairy へのデプロイ
-          command: |
-            curl \
-              -A "CircleCI 2.0" \
-              -F api_key="$TESTFAIRY_API_KEY" \
-              -F comment="CircleCI build $CIRCLE_BUILD_URL" \
-              -F file=@path/to/ipafile.ipa \
-              https://upload.testfairy.com/api/upload/
-
-workflows:
-  version: 2
-  build-and-deploy:
-    jobs:
-
-      - build
-      - deploy:
-        requires:
-          - build
-        filters:
-          branches:
-            only: master
+# ...
+steps:
+  - run: bundle exec pod install
 
 ```
-{% endraw %}
 
-使用可能なすべてのオプションについては、[TestFairy のアップロード API に関するドキュメント](https://docs.testfairy.com/API/Upload_API.html)を参照してください。
 
-## シミュレーターに関する一般的な問題の解決方法
-{:.no_toc}
 
-一部のプロジェクトでは、シミュレーター関連の問題が発生することがわかっています。 特に頻繁に発生している問題について説明します。
 
-- **Xcode のバージョンが使用できない:** 各ビルド イメージにはいくつかのバージョンの Xcode がインストールされており、最新のリリースに伴い更新されていきます。 バージョン `10.0.0` を使用する場合は、ポイント リリース番号まで含めたフル バージョンを指定する必要があります。 一方、最新の Xcode 8.3 (`8.3.3` など) を使用する場合は、`config.yml` に `8.3` のみを指定します。 CircleCI 上で `8.3` バージョンと指定してあれば、8.3 の最新ポイント リリースが公開されたときに、そのまま最新ポイント リリースが使用できるようになります。
+## NodeJS の使用
 
-- **依存関係のバージョンが一致しない:** 想定と異なる依存関係のバージョンがジョブで使用されている場合は、キャッシュを使用せずにリビルドしてみてください。キャッシュ内の古い依存関係が原因となって、新しいバージョンのインストールが妨げられている可能性があります。
+{: #using-nodejs }
 
-- **Cryptic でコンパイル エラーが発生する:** コンパイル時に原因不明のエラーが発生した場合は、ビルドで使用している Xcode のバージョンが、ローカルで使用しているバージョンと一致しているかどうかを確認してください。 プロジェクトの `config.yml` で Xcode のバージョンを指定していない場合は、古い Xcode がデフォルトで使用され、必要な機能がサポートされていない可能性があります。
+Xcode イメージには少なくとも一つのバージョンの NodeJS が使用可能な状態で提供されています。
 
-- **Ruby でセグメンテーション違反が発生する:** ジョブの実行中に使用される Ruby gem の一部では、Ruby でセグメンテーション エラーが発生するケースが確認されています。 原因としては、gem のビルドに使用された Ruby のバージョンと、その実行に使用された Ruby のバージョンが異なることが考えられます。 ローカルで使用されている Ruby のバージョンが CircleCI で使用されているバージョンと一致していることを確認してください。 コンテナに新しいバージョンの Ruby をインストールする場合は、[こちらのガイド](https://discuss.circleci.com/t/installing-a-newer-ruby-version-on-ios-os-x-containers/2466)を参照してください。
 
-- **テスト実行中に不規則なタイムアウトが発生する:** UI テストがタイムアウトになる場合は、[他のテストの前に](https://stackoverflow.com/questions/44361446/ios-uitests-failed-idetestoperationsobservererrordomain-code-13/48299184#48299184)実行してみてください。 また、`xcodebuild` コマンドまたは `xctool` コマンドもそのまま使用してみてください。 一部の問題は、これらのツールでのみ発生します。
 
-- **コード署名証明書のインストール中にエラーが発生する:** iOS コード署名に関するドキュメントを参照してください。
+### Xcode 13 以降を使用したイメージ
 
-- **多数の iOS アプリの開発者が、大量のコードを生成するツールを使用している:** この場合、CircleCI では Xcode のワークスペース、プロジェクト、またはスキームを正しく検出できないことがあります。 代わりに、環境変数を使用してそれらを指定できます。
+{: #images-using-xcode-13-and-later }
 
-### macOS ベースのビルドの制限事項
-{:.no_toc}
+Xcode 13 以降を使用したイメージには、`nvm` が管理する NodeJS がインストールされており、イメージがビルドされた時点で最新の `current` と `lts` リリースが常に提供されます。 また、`lts`はデフォルトの NodeJS バージョンとして設定されています。
 
-現在、macOS 上の並列コンテナ間でのテストの分割はサポートされていません。 複数の Xcode バージョンを使用してビルドする場合、または複数のテスト ターゲットを実行する場合は、並列ジョブを含むワークフローを使用することをお勧めします。 並列ジョブを含むワークフローの例については、[こちらのドキュメント]({{ site.baseurl }}/ja/2.0/workflows/#ワークフローの構成例)を参照してください。
+インストールされている NodeJS バージョンに関する情報は、[イメージのソフトウェアマニフェスト](#supported-xcode-versions)をご覧になるか、またはジョブの中で `nvm ls` を実行してください。 
 
-## 複数の Executor タイプを含む構成例 (macOS と Docker)
+以下のコマンドで `current` バージョンをデフォルトに設定します。
 
-同じワークフロー内で、複数の [Executor タイプ](https://circleci.com/ja/docs//2.0/executor-types/)を使用することができます。 以下の例では、プッシュされる iOS プロジェクトは macOS 上でビルドされ、その他の iOS ツール ([SwiftLint](https://github.com/realm/SwiftLint) と [Danger](https://github.com/danger/danger)) は Docker で実行されます。
 
-{% raw %}
 
 ```yaml
-version: 2
+# ...
+steps:
+  - run: nvm alias default node
+```
+
+
+`lts`リリースに戻すには、以下を実行します。
+
+
+
+```yaml
+# ...
+steps:
+  - run: nvm alias default --lts
+```
+
+
+特定の NodeJS をインストールし使用しするには、以下を実行します。
+
+
+
+```yaml
+# ...
+steps:
+  - run: nvm install 12.22.3 && nvm alias default 12.22.3
+
+```
+
+
+これらのイメージは、 NodeJS のインストールとキャッシュパッケージの管理に役立つ公式の [CircleCI Node Orb](https://circleci.com/developer/orbs/orb/circleci/node) とも互換性があります。 
+
+
+
+### Xcode 12.5 以前を使用したイメージ
+
+{: #images-using-xcode-125-and-earlier }
+
+Xcode 12.5 以前を使用したイメージには、少なくとも１つのバージョンの NodeJS が `brew` を直接使用してインストールされています。
+
+インストールされている NodeJS バージョンに関する情報は、[イメージのソフトウェアマニフェスト](#supported-xcode-versions)をご覧ください。
+
+`nvm` をインストールすることにより、これらのイメージは NodeJS のインストールとキャッシュパッケージの管理に役立つ公式の [CircleCI Node Orb ](https://circleci.com/developer/orbs/orb/circleci/node)とも互換性を持つようになります。 
+
+
+
+## Homebrew の使用
+
+{: #using-homebrew }
+
+CircleCI には [Homebrew](http://brew.sh/) がプリインストールされているため、`brew install` を使用するだけで、ビルドに必要なほぼすべての依存関係を追加できます。 以下に例を示します。
+
+
+
+```yaml
+# ...
+steps:
+  - run:
+      name: Install cowsay
+      command: brew install cowsay
+  - run:
+      name: cowsay hi
+      command: cowsay Hi!
+```
+
+
+必要な場合は、`sudo` コマンドを使用して、Homebrew 以外のカスタマイズも実行できます。
+
+
+
+## デプロイの設定
+
+{: #configuring-deployment }
+
+アプリケーションのテストと署名が完了したら、App Store Connect や TestFlight など、任意のサービスへのデプロイを設定できます。 fastlane の設定例を含むさまざまなサービスへのデプロイ方法の詳細は、[iOS アプリケーション デプロイガイド]({{ site.baseurl }}/ja/2.0/deploying-ios/)をご覧ください。
+
+
+
+## ジョブ実行時間を削減するベストプラクティス
+
+{: #reducing-job-time-and-best-practises }
+
+
+
+### シミュレーターの事前起動
+
+{: #pre-starting-the-simulator }
+
+アプリケーションをビルドする前に iOS シミュレーターを起動して、シミュレーターの稼働が遅れないようにします。 こうすることで、通常はビルド中にシミュレーターのタイムアウトが発生する回数を減らすことができます。
+
+シミュレーターを事前に起動するには、macOS Orb (バージョン`2.0.0`以降) を設定に追加します。
+
+
+
+```yaml
+orbs:
+  macos: circleci/macos@2
+```
+
+
+次に、`preboot-simulator` コマンドを以下の例のように定義します。
+
+
+
+```yaml
+steps:
+  - macos/preboot-simulator:
+      version: "15.0"
+      platform: "iOS"
+      device: "iPhone 13 Pro Max"
+```
+
+
+シミュレータがバックグラウンドで起動するまでの最大時間を確保するために、このコマンドをジョブの初期段階に配置することをお勧めします。
+
+Apple Watch シミュレータとペアリングされた iPhone シミュレータが必要な場合は、 macOS Orb で `preboot-paired-simulator` コマンドを使用します。
+
+
+
+```yaml
+steps:
+  - macos/preboot-paired-simulator:
+      iphone-device: "iPhone 13"
+      iphone-version: "15.0"
+      watch-device: "Apple Watch Series 7 - 45mm"
+      watch-version: "8.0"
+```
+
+
+**注: **シミュレーターを起動するには数分、ペアのシミュレーターを起動するにはそれ以上かかる場合があります。 この間、 `xcrun simctl list` などのコマンドの呼び出しは、シミュレータの起動中にハングしたように見える場合があります。
+
+
+
+### iOS シミュレーターのクラッシュレポートの収集
+
+{: #collecting-ios-simulator-crash-reports }
+
+
+
+{:.no_toc}
+
+テストランナーのタイムアウトなどの理由で `scan` ステップが失敗する場合、多くの場合テストの実行中にアプリケーションがクラッシュした可能性があります。 このような場合、クラッシュレポートを収集することでクラッシュの正確な原因を診断することができます。 クラッシュレポートをアーティファクトとしてアップロードする方法は以下の通りです。
+
+
+
+```yaml
+steps:
+  # ...
+  - store_artifacts:
+    path: ~/Library/Logs/DiagnosticReports
+
+```
+
+
+
+
+### fastlane の最適化
+
+{: #optimizing-fastlane }
+
+
+
+{:.no_toc}
+
+デフォルトでは、fastlane scan はテスト出力レポートを `html` 形式および `junit` 形式で生成します。 テストに時間がかかり、これらの形式のレポートが必要でない場合は、[fastlane のドキュメント](https://docs.fastlane.tools/actions/run_tests/#parameters)で説明されているように、パラメーター `output_types` を変更して、これらの形式を無効化することができます。
+
+
+
+### CocoaPods の最適化
+
+{: #optimizing-cocoapods }
+
+
+
+{:.no_toc}
+
+基本的なセットアップ手順に加えて、Specs リポジトリ全体をクローンするのではなく、CDN の利用が可能な CocoaPods 1.8 以降を使用することをお勧めします。 そうすることで、ポッドをすばやくインストールできるようになり、ビルド時間が短縮されます。 1.8 以降では `pod install` ステップのジョブ実行がかなり高速化されるので、1.7 以前を使用している場合はアップグレードを検討してください。
+
+実行するには　Podfile ファイルの先頭行を次のように記述します。
+
+
+
+```
+source 'https://cdn.cocoapods.org/'
+```
+
+
+1.7 以前からアップグレードする場合はさらに、Podfile から以下の行を削除すると共に、CircleCI 設定ファイルの "Fetch CocoaPods Specs" ステップを削除します。
+
+
+
+```
+source 'https://github.com/CocoaPods/Specs.git'
+```
+
+
+CocoaPods を最新の安定版に更新するには、以下のコマンドで Ruby gem を更新します。
+
+
+
+```
+sudo gem install cocoapods
+```
+
+
+[Pods ディレクトリをソース管理に](http://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control)チェックインすることをお勧めします。 そうすることで、決定論的で再現可能なビルドを実現できます。
+
+**注:** CocoaPods 1.8 のリリース以降、CocoaPods Spec レポジトリ用に提供した以前の S3 ミラーは整備も更新もされていません。 既存のジョブへの障害を防ぐために利用可能な状態ではありますが、上記の CDN 方式に変更することを強くお勧めします。
+
+
+
+### Homebrew の最適化
+
+{: #optimizing-homebrew }
+
+
+
+{:.no_toc}
+
+デフォルトでは Homebrew はすべての操作の開始時に更新の有無を確認します。 Homebrew のリリースサイクルはかなり頻繁なため、 `brew` を呼び出すステップはどれも完了するまでに時間がかかります。
+
+ビルドのスピード、または Homebrewの新たな更新によるバグが問題であれば、自動更新を無効にすることができます。 それにより、一つのジョブにつき最大で平均 2 〜 5 分短縮することができます。
+
+自動更新を無効にするには、ジョブ内で `HOMEBREW_NO_AUTO_UPDATE` 環境変数を定義します。
+
+
+
+```yaml
+version: 2.1
 jobs:
   build-and-test:
     macos:
-      xcode: "10.2.0"
-    working_directory: /Users/distiller/project
+      xcode: 11.3.0
+    environment:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - checkout
+      - run: brew install wget
+```
+
+
+
+
+## サポートされているビルドおよびテストのツール
+
+{: #supported-build-and-test-tools }
+
+CircleCI  では、macOS Executorを使って iOS のビルドやテストに関するほぼすべてのストラテジーに合わせてビルドをカスタマイズできます。
+
+
+
+### 一般的なテストツール
+
+{: #common-test-tools }
+
+
+
+{:.no_toc}
+
+以下のテストツールは、CircleCI で有効に機能することが確認されています。
+
+* [XCTest](https://developer.apple.com/library/ios/documentation/DeveloperTools/Conceptual/testing_with_xcode/chapters/01-introduction.html)
+* [Kiwi](https://github.com/kiwi-bdd/Kiwi)
+* [KIF](https://github.com/kif-framework/KIF)
+* [Appium](http://appium.io/)
+
+
+
+### React Native プロジェクト
+
+{: #react-native-projects }
+
+
+
+{:.no_toc}
+
+React Native プロジェクトは、CircleCI  上で `macos` および `docker` Executor タイプを使用してビルドできます。 React Native プロジェクトの設定例は、[React Native のデモアプリケーション](https://github.com/CircleCI-Public/circleci-demo-react-native)を参照してください。
+
+
+
+### `config.yml` ファイルの作成
+
+{: #creating-a-configyml-file }
+
+
+
+{:.no_toc}
+
+プロジェクトの CircleCI 設定を `.circleci/config.yml `で変更することにより、ビルドを最も柔軟にカスタマイズすることができます。 この方法により、任意の bash コマンドを実行したり、ワークスペースやキャッシュなどの組み込み機能を利用することができます。 `config.yml` ファイルの構造の詳細については、[CircleCI の設定]({{ site.baseurl }}/ja/2.0/configuration-reference/)ドキュメントを参照してください。
+
+
+
+## 複数の Executor タイプ (macOS + Docker) の使用
+
+{: #using-multiple-executor-types-macos-docker }
+
+同じワークフロー内で、複数の [Executor タイプ](https://circleci.com/ja/docs/2.0/executor-types/)を使用することができます。 以下の例では、プッシュされる iOS プロジェクトは macOS 上でビルドされ、その他の iOS ツール ([SwiftLint](https://github.com/realm/SwiftLint) と [Danger](https://github.com/danger/danger)) は Docker で実行されます。
+
+
+
+```yaml
+version: 2.1
+jobs:
+  build-and-test:
+    macos:
+      xcode: 11.3.0
     environment:
       FL_OUTPUT_DIR: output
 
     steps:
-
       - checkout
       - run:
-          name: CocoaPods Specs のフェッチ
-          command: |
-            curl https://cocoapods-specs.circleci.com/fetch-cocoapods-repo-from-s3.sh | bash -s cf
-      - run:
-          name: CocoaPods のインストール
+          name: CocoaPod のインストール
           command: pod install --verbose
 
       - run:
-          name: テストのビルドと実行
+          name: ビルドとテストの実行
           command: fastlane scan
           environment:
             SCAN_DEVICE: iPhone 8
@@ -513,8 +829,10 @@ jobs:
 
   swiftlint:
     docker:
-
-      - image: dantoml/swiftlint:latest
+      - image: bytesguy/swiftlint:latest
+        auth:
+          username: mydockerhub-user
+          password: $DOCKERHUB_PASSWORD  # コンテキスト/プロジェクト UI 環境変数を参照します
     steps:
       - checkout
       - run: swiftlint lint --reporter junit | tee result.xml
@@ -525,31 +843,44 @@ jobs:
 
   danger:
     docker:
-
-      - image: dantoml/danger:latest
+      - image: bytesguy/danger:latest
+        auth:
+          username: mydockerhub-user
+          password: $DOCKERHUB_PASSWORD  # コンテキスト/プロジェクト UI 環境変数を参照します
     steps:
       - checkout
       - run: danger
 
 workflows:
-  version: 2
   build-test-lint:
     jobs:
-
       - swiftlint
       - danger
       - build-and-test
+
 ```
 
-{% endraw %}
 
-## React Native プロジェクト
-{:.no_toc}
 
-React Native プロジェクトは、CircleCI 2.0 上で `macos` および `docker` の Executor タイプを使用してビルドできます。 React Native プロジェクトの例については、GitHub で公開されている [React Native アプリケーションのサンプル](https://github.com/CircleCI-Public/circleci-demo-react-native)を参照してください。
+
+## トラブルシューティング
+
+{: #troubleshooting }
+
+ジョブの実行中にビルドが失敗した場合は、 [サポートセンターのナレッジベース](https://support.circleci.com/hc/en-us/categories/115001914008-Mobile)で一般的な問題の解決方法を確認してください。
+
+
 
 ## 関連項目
+
+{: #see-also }
+
+
+
 {:.no_toc}
 
-- CircleCI 2.0 で fastlane を使用して iOS プロジェクトをビルド、テスト、署名、およびデプロイする完全なサンプルについては、[`circleci-demo-ios` GitHub リポジトリ](https://github.com/CircleCI-Public/circleci-demo-ios) を参照してください。
-- 設定ファイルの詳しい説明については、「[iOS プロジェクトのチュートリアル]({{ site.baseurl }}/ja/2.0/ios-tutorial/)」を参照してください。
+- CircleCI  で fastlane を使用して iOS プロジェクトをビルド、テスト、署名、およびデプロイする完全なサンプルについては、[`circleci-demo-ios` の GitHub リポジトリ](https://github.com/CircleCI-Public/circleci-demo-ios) を参照してください。
+
+- 設定ファイルの詳しい説明については、[iOS プロジェクトのチュートリアル]({{ site.baseurl }}/2.0/ios-tutorial/)を参照してください。
+
+- fastlane match をプロジェクトに設定する方法は [iOS コード署名に関するドキュメント]({{ site.baseurl}}/ja/2.0/ios-codesigning/)を参照してください。
