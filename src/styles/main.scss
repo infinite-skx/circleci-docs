@@ -3,6 +3,7 @@
 @import 'sidebar';
 @import 'footer';
 @import 'global-nav';
+@import 'langselector';
 @import 'subnav';
 @import 'instantsearch';
 @import 'tooltip';
@@ -13,6 +14,7 @@
 @import 'spacing';
 @import 'syntax';
 @import 'snippets';
+@import 'utilities';
 @import 'progressbar';
 
 // General
@@ -587,14 +589,6 @@ Fixing styling for the code example tables in the "Migrating From..." pages
 	td p {
 		margin: 0px;
 	}
-}
-
-/*
-*  Experiment Key: dd_surfacing_full_example_config_experiment_test
-*  https://app.optimizely.com/v2/projects/16812830475/experiments/20742690126/variations
-*/
-#full-config-example {
-	visibility: hidden;
 }
 
 /*
